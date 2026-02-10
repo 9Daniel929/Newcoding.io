@@ -3,141 +3,163 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Newofa Language Generator</title>
+  <title>Newofa Language IDE</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; background:#0f1220; color:#eaeaf0; margin:0; padding:20px; }
-    h1 { margin-bottom:8px; }
-    .hint { color:#aab; margin-bottom:16px; }
+    body { font-family: system-ui, Arial, sans-serif; background:#0f1220; color:#eaeaf0; margin:0; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#121634; box-shadow:0 5px 20px rgba(0,0,0,.3); }
+    header h1 { margin:0; font-size:18px; }
+    header button { background:#5b6cff; color:white; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; }
+    header button:hover { opacity:.9; }
+    .page { display:none; padding:20px; }
+    .page.active { display:block; }
     .box { background:#161a33; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
     textarea, input { width:100%; background:#0c0f25; color:#eaeaf0; border:1px solid #2a2f66; border-radius:8px; padding:10px; }
-    textarea { min-height:120px; resize:vertical; }
-    button { background:#5b6cff; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
-    button:hover { opacity:.9; }
+    textarea { min-height:140px; resize:vertical; }
     .row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     .meaning { font-size:14px; color:#cfd3ff; margin-bottom:8px; }
-    .tag { display:inline-block; padding:4px 8px; background:#22276b; border-radius:999px; font-size:12px; margin-right:6px; }
+    .tag { display:inline-block; padding:4px 8px; background:#22276b; border-radius:999px; font-size:12px; margin-bottom:8px; }
     pre { white-space:pre-wrap; word-break:break-word; background:#0b0e22; padding:12px; border-radius:8px; border:1px solid #2a2f66; }
   </style>
 </head>
 <body>
-  <h1>🧪 Newofa — mini language</h1>
-  <div class="hint">Type plain English → click <b>Go</b> → get <b>Newofa code</b>, a <b>game generator</b>, and the <b>meaning</b> shown on top.</div>
 
+<header>
+  <h1>🧪 Newofa IDE</h1>
+  <div>
+    <button onclick="showPage('home')">Home</button>
+    <button onclick="showPage('english')">English</button>
+    <button onclick="showPage('code')">Code</button>
+  </div>
+</header>
+
+<!-- HOME PAGE -->
+<div id="home" class="page active">
+  <div class="box">
+    <h2>Welcome to Newofa</h2>
+    <p>Newofa is a real mini programming language that turns English into code and games.</p>
+    <ul>
+      <li>🗣 English → Newofa</li>
+      <li>💻 Run Newofa & HTML</li>
+      <li>🎮 Built-in game generator</li>
+    </ul>
+    <button onclick="showPage('english')">Start with English</button>
+    <button onclick="showPage('code')">Go to Code</button>
+  </div>
+</div>
+
+<!-- ENGLISH PAGE -->
+<div id="english" class="page active">
   <div class="box">
     <div class="meaning" id="meaning">Meaning: —</div>
-    <input id="english" placeholder="Example: make a 2d platformer game with a player and enemies" />
+    <input id="englishInput" placeholder="Example: make a 2d platformer game with a player and enemies" />
     <br/><br/>
-    <button onclick="go()">Go</button>
+    <button onclick="fromEnglish()">Go</button>
   </div>
 
   <div class="row">
     <div class="box">
       <span class="tag">Newofa Code</span>
-      <pre id="newofa">// output will appear here</pre>
+      <pre id="newofaOut"></pre>
     </div>
     <div class="box">
-      <span class="tag">Generated Game (JS)</span>
-      <pre id="game">// game code will appear here</pre>
+      <span class="tag">Generated Game JS</span>
+      <pre id="gameOut"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- CODE PAGE -->
+<div id="code" class="page">
+  <div class="row">
+    <div class="box">
+      <span class="tag">Newofa Code (.newofa)</span>
+      <textarea id="newofaCode">newofa.start
+world.mode 2D
+build.game enable
+entity.player spawn
+newofa.end</textarea>
+      <br/><br/>
+      <button onclick="runNewofa()">Run Newofa</button>
+    </div>
+
+    <div class="box">
+      <span class="tag">HTML / JS</span>
+      <textarea id="htmlCode"><!DOCTYPE html>
+<html>
+<body>
+<h1>Hello from HTML</h1>
+</body>
+</html></textarea>
+      <br/><br/>
+      <button onclick="runHTML()">Run HTML</button>
     </div>
   </div>
 
-<script>
-// --- Newofa Language Core ---
-// This is a toy language. English is mapped to structured Newofa commands.
+  <div class="box">
+    <span class="tag">Output</span>
+    <iframe id="output" style="width:100%;height:300px;border:1px solid #2a2f66;border-radius:8px;background:white;"></iframe>
+  </div>
+</div>
 
-function parseEnglish(text) {
+<script>
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// -------- English → Newofa --------
+function parseEnglish(text){
   const t = text.toLowerCase();
-  const intent = {
+  return {
     game: t.includes('game'),
     platformer: t.includes('platform'),
-    shooter: t.includes('shooter'),
     player: t.includes('player'),
     enemies: t.includes('enemy'),
-    score: t.includes('score'),
-    physics: t.includes('physics') || t.includes('gravity'),
+    physics: t.includes('gravity') || t.includes('physics'),
     dimension: t.includes('3d') ? '3D' : '2D'
   };
-  return intent;
 }
 
-function toNewofa(intent) {
-  let code = [];
-  code.push('newofa.start');
-  code.push(`world.mode ${intent.dimension}`);
-
-  if (intent.game) code.push('build.game enable');
-  if (intent.player) code.push('entity.player spawn');
-  if (intent.enemies) code.push('entity.enemy spawn:auto');
-  if (intent.platformer) code.push('style.platformer on');
-  if (intent.shooter) code.push('style.shooter on');
-  if (intent.physics) code.push('physics.gravity 9.8');
-  if (intent.score) code.push('ui.score enable');
-
-  code.push('newofa.end');
-  return code.join('\n');
+function toNewofa(i){
+  let c = ['newofa.start',`world.mode ${i.dimension}`];
+  if(i.game) c.push('build.game enable');
+  if(i.player) c.push('entity.player spawn');
+  if(i.enemies) c.push('entity.enemy spawn:auto');
+  if(i.platformer) c.push('style.platformer on');
+  if(i.physics) c.push('physics.gravity 9.8');
+  c.push('newofa.end');
+  return c.join('\n');
 }
 
-function meaningFromIntent(intent) {
-  let parts = [];
-  parts.push(`${intent.dimension} game`);
-  if (intent.platformer) parts.push('platformer style');
-  if (intent.shooter) parts.push('shooter mechanics');
-  if (intent.player) parts.push('player character');
-  if (intent.enemies) parts.push('enemies');
-  if (intent.physics) parts.push('physics enabled');
-  if (intent.score) parts.push('score system');
-  return 'Meaning: ' + parts.join(', ');
+function meaning(i){
+  let m=[`${i.dimension} game`];
+  if(i.platformer) m.push('platformer');
+  if(i.player) m.push('player');
+  if(i.enemies) m.push('enemies');
+  if(i.physics) m.push('physics');
+  return 'Meaning: '+m.join(', ');
 }
 
-// --- Simple Game Generator (Canvas JS) ---
-function generateGameJS(intent) {
-  return `// Auto-generated mini game (demo)
-const canvas = document.createElement('canvas');
-canvas.width = 600;
-canvas.height = 400;
-document.body.appendChild(canvas);
-const ctx = canvas.getContext('2d');
-
-let player = { x:50, y:300, w:30, h:30, vy:0 };
-let enemies = ${intent.enemies ? '[{x:400,y:300,w:30,h:30}]' : '[]'};
-let gravity = ${intent.physics ? '0.6' : '0'};
-
-function loop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // player
-  player.vy += gravity;
-  player.y += player.vy;
-  if(player.y > 300){ player.y = 300; player.vy = 0; }
-  ctx.fillStyle = 'cyan';
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-
-  // enemies
-  ctx.fillStyle = 'red';
-  enemies.forEach(e => ctx.fillRect(e.x,e.y,e.w,e.h));
-
-  requestAnimationFrame(loop);
+function fromEnglish(){
+  const text = englishInput.value;
+  const i = parseEnglish(text);
+  newofaOut.textContent = toNewofa(i);
+  gameOut.textContent = '// Game generated from Newofa';
+  meaningEl = document.getElementById('meaning');
+  meaningEl.textContent = meaning(i);
 }
 
-window.addEventListener('keydown', e => {
-  if(e.code === 'Space') player.vy = -10;
-});
-
-loop();`;
+// -------- Newofa Runtime --------
+function runNewofa(){
+  const code = document.getElementById('newofaCode').value.split('\n');
+  let html = '<canvas width="600" height="400"></canvas><script>const c=document.querySelector("canvas");const x=c.getContext("2d");let y=300,vy=0;function l(){x.clearRect(0,0,600,400);vy+=0.6;y+=vy;if(y>300){y=300;vy=0;}x.fillStyle="cyan";x.fillRect(50,y,30,30);requestAnimationFrame(l);}window.onkeydown=e=>{if(e.code==="Space")vy=-10};l();<\/script>';
+  output.srcdoc = html;
 }
 
-function go() {
-  const text = document.getElementById('english').value;
-  const intent = parseEnglish(text);
-
-  const newofaCode = toNewofa(intent);
-  const meaning = meaningFromIntent(intent);
-  const gameCode = generateGameJS(intent);
-
-  document.getElementById('meaning').innerText = meaning;
-  document.getElementById('newofa').innerText = newofaCode;
-  document.getElementById('game').innerText = gameCode;
+function runHTML(){
+  output.srcdoc = document.getElementById('htmlCode').value;
 }
 </script>
+
 </body>
 </html>
